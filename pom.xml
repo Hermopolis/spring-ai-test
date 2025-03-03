@@ -11,7 +11,7 @@
     <groupId>com.netease.godlike.ai</groupId>
     <artifactId>god-ai-test</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>god-ai-test</name>
+    <name>spring-ai-test</name>
     <description>god-ai-test</description>
     <url/>
     <licenses>
