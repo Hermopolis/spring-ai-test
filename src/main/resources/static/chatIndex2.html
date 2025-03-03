@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>AI 聊天演示</title>
+    <script src="marked.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+
+        #chat-container {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        #response-area {
+            height: 400px;
+            overflow-y: auto;
+            border: 1px solid #eee;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+            background: #f9f9f9;
+        }
+
+        #input-form {
+            display: flex;
+            gap: 10px;
+        }
+
+        #message-input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        button {
+            padding: 10px 20px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #0056b3;
+        }
+
+        .response-chunk {
+            margin: 5px 0;
+            padding: 8px;
+            background: white;
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body>
+<div id="chat-container">
+    <h2>AI 聊天演示（流式）</h2>
+    <div id="response-area"></div>
+    <form id="input-form" onsubmit="handleSubmit(event)">
+        <input
+                type="text"
+                id="message-input"
+                placeholder="输入您的消息..."
+                autocomplete="off"
+                required
+        >
+        <button type="submit">发送</button>
+    </form>
+</div>
+
+<script>
+    async function handleSubmit(event) {
+        event.preventDefault();
+        const input = document.getElementById('message-input');
+        const message = input.value.trim();
+        input.value = '';
+
+        if (!message) return;
+
+        try {
+            const responseArea = document.getElementById('response-area');
+
+            // 创建新消息容器
+            const messageContainer = document.createElement('div');
+            messageContainer.className = 'response-chunk';
+            responseArea.appendChild(messageContainer);
+            responseArea.scrollTop = responseArea.scrollHeight;
+
+            // 发起流式请求
+            const response = await fetch(`/ai/chat?message=${encodeURIComponent(message)}`, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'text/event-stream'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP 错误! 状态码: ${response.status}`);
+            }
+
+            // 处理流式响应
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder('utf-8');
+            let buffer = '';
+
+            while (true) {
+                const {done, value} = await reader.read();
+                if (done) {
+                    break;
+                }
+
+                buffer += decoder.decode(value, {stream: true});
+
+                // 处理可能的多个数据块
+                while (buffer.includes('\n')) {
+                    const lineEndIndex = buffer.indexOf('\n');
+                    const line = buffer.substring(0, lineEndIndex);
+                    buffer = buffer.substring(lineEndIndex + 1);
+                    if (line) {
+
+                        if (line.startsWith('data:')) {
+                            const data = line.replace('data:', '');
+                            messageContainer.textContent += data;
+                        } else {
+                            messageContainer.textContent += line;
+                        }
+
+                        // 保持滚动在底部
+                        responseArea.scrollTop = responseArea.scrollHeight;
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('请求失败:', error);
+            alert('请求失败，请检查控制台日志');
+        }
+    }
+</script>
+</body>
+</html>

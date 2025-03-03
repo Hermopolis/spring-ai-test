@@ -1,0 +1,39 @@
+spring:
+  resources:
+    static-locations: classpath:/static/
+  application:
+    name: god-ai-test
+  ai:
+    ollama:
+      embedding:
+        enabled: true
+      base-url: http://127.0.0.1:11434
+      chat:
+        model: deepseek-r1:14b
+
+logging:
+  level:
+    org:
+      springframework:
+        ai: debug
+server:
+  servlet:
+    encoding:
+      charset: UTF-8
+# springdoc-openapi项目配置
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha
+  api-docs:
+    path: /v3/api-docs
+  group-configs:
+    - group: 'default'
+      paths-to-match: '/**'
+      packages-to-scan: com.netease.godlike.ai.godaitest
+# knife4j的增强配置，不需要增强可以不配
+knife4j:
+  enable: true
+  setting:
+    language: zh_cn

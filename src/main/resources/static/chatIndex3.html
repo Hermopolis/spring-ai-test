@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>AI 聊天演示</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            font-family: Arial, sans-serif;
+        }
+
+        .chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        .input-container {
+            background: white;
+            padding: 20px;
+            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .input-wrapper {
+            display: flex;
+            gap: 10px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        input {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+
+        button {
+            padding: 12px 24px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        .message {
+            margin-bottom: 20px;
+            max-width: 80%;
+        }
+
+        .user-message {
+            margin-left: auto;
+            background-color: #007bff;
+            color: white;
+            padding: 12px 16px;
+            border-radius: 12px 12px 0 12px;
+        }
+
+        .ai-message {
+            background-color: white;
+            padding: 12px 16px;
+            border-radius: 12px 12px 12px 0;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .loading {
+            color: #666;
+            font-style: italic;
+            padding: 12px 16px;
+        }
+    </style>
+</head>
+<body>
+<div class="chat-container" id="chatContainer"></div>
+<div class="input-container">
+    <div class="input-wrapper">
+        <input type="text" id="messageInput" placeholder="输入消息..."/>
+        <button onclick="sendMessage()">发送</button>
+    </div>
+</div>
+
+<script>
+    const chatContainer = document.getElementById('chatContainer');
+    const messageInput = document.getElementById('messageInput');
+
+    // 处理Enter键发送
+    messageInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            sendMessage();
+        }
+    });
+
+    function appendMessage(content, isUser = true) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${isUser ? 'user-message' : 'ai-message'}`;
+        messageDiv.textContent = content;
+        chatContainer.appendChild(messageDiv);
+        return messageDiv;
+    }
+
+    async function sendMessage() {
+        const message = messageInput.value.trim();
+        if (!message) return;
+
+        messageInput.value = '';
+        appendMessage(message, true);
+
+        // 创建加载提示
+        const loadingDiv = document.createElement('div');
+        loadingDiv.className = 'message loading';
+        loadingDiv.textContent = 'AI正在思考...';
+        chatContainer.appendChild(loadingDiv);
+
+        try {
+            const response = await fetch(`http://localhost:8080/ai/chat?message=${encodeURIComponent(message)}`);
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+
+            // 移除加载提示
+            chatContainer.removeChild(loadingDiv);
+
+            // 创建AI消息容器
+            const aiMessageDiv = appendMessage('', false);
+
+            while (true) {
+                const {done, value} = await reader.read();
+                if (done) break;
+
+                const chunk = decoder.decode(value);
+                // 处理流式数据（假设返回格式为 data:content）
+                chunk.split('').forEach(line => {
+                    aiMessageDiv.textContent += line.replace('data:', '');
+
+                });
+
+                // 自动滚动到底部
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }
+        } catch (error) {
+            console.error('请求失败:', error);
+            chatContainer.removeChild(loadingDiv);
+            appendMessage('请求失败，请重试', false);
+        }
+    }
+
+    // 初始化自动聚焦输入框
+    messageInput.focus();
+</script>
+</body>
+</html>
